@@ -8,17 +8,20 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import requests
 import io
+import os
 
 # --- 中文字型設定 ---
 import matplotlib.font_manager as fm
-# 在 Render 環境中，字型會被安裝在這裡
-font_path = '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc'
-if fm.findfont('WenQuanYi Zen Hei', fontext='ttc'):
-    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
-else:
-    # 如果找不到，提供一個備用路徑或警告
-    pass # 在本地可能找不到，但在 Render 上應該可以
-plt.rcParams['axes.unicode_minus'] = False # 解決負號顯示問題
+
+# Check if running on Render/Linux, otherwise skip font setup
+if os.name == 'posix':
+    # On Render, install 'fonts-arphic-uming'
+    # After installation, Matplotlib should find it.
+    try:
+        plt.rcParams['font.sans-serif'] = ['AR PL UMing CN']
+        plt.rcParams['axes.unicode_minus'] = False # 解決負號顯示問題
+    except Exception as e:
+        st.warning(f"中文字型設定失敗，圖表中的中文可能顯示為方塊。錯誤：{e}")
 # --- END OF FONT SETTING ---
 
 st.set_page_config(page_title="台股 AI 分析", layout="wide")
