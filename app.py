@@ -8,21 +8,6 @@ from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
 import requests
 import io
-import os
-
-# --- 中文字型設定 ---
-import matplotlib.font_manager as fm
-
-# Check if running on Render/Linux, otherwise skip font setup
-if os.name == 'posix':
-    # On Render, install 'fonts-arphic-uming'
-    # After installation, Matplotlib should find it.
-    try:
-        plt.rcParams['font.sans-serif'] = ['AR PL UMing CN']
-        plt.rcParams['axes.unicode_minus'] = False # 解決負號顯示問題
-    except Exception as e:
-        st.warning(f"中文字型設定失敗，圖表中的中文可能顯示為方塊。錯誤：{e}")
-# --- END OF FONT SETTING ---
 
 st.set_page_config(page_title="台股 AI 分析", layout="wide")
 st.title("📈 台股 AI 分析與預測")
