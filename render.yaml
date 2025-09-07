@@ -3,6 +3,9 @@ services:
     name: ai-stock-app
     env: python
     plan: free
+    # A list of system packages to install. This is where we install the font.
+    systemPackages:
+      - "fonts-arphic-uming"
     buildCommand: "pip install -r requirements.txt"
     startCommand: "streamlit run app.py --server.port 10000 --server.address 0.0.0.0"
     envVars:
