@@ -29,7 +29,6 @@ def load_stock_list():
         df_l = pd.read_csv(io.StringIO(response_l.text))
         df_o = pd.read_csv(io.StringIO(response_o.text))
         
-        # --- FINAL FIX: Use column position for robustness ---
         if len(df_l.columns) < 2 or len(df_o.columns) < 2:
             st.error("下載的股票列表格式不符，欄位不足。")
             return None
@@ -38,13 +37,15 @@ def load_stock_list():
         rename_map_o = {df_o.columns[0]: 'code', df_o.columns[1]: 'name'}
         df_l = df_l.rename(columns=rename_map_l)
         df_o = df_o.rename(columns=rename_map_o)
-        # --- END OF FIX ---
 
         df_l['type'] = '上市'
         df_o['type'] = '上櫃'
         
         stock_list = pd.concat([df_l[['code', 'name', 'type']], df_o[['code', 'name', 'type']]])
-        stock_list['code'] = stock_list['code'].astype(str)
+        
+        # --- FINAL FIX: 清除股票代號前後的空格 ---
+        stock_list['code'] = stock_list['code'].astype(str).str.strip()
+        
         stock_list = stock_list.drop_duplicates(subset='code', keep='first')
         return stock_list.set_index('code')
     except Exception as e:
@@ -56,7 +57,7 @@ def load_stock_list():
 stock_list = load_stock_list()
 
 if stock_list is not None:
-    symbol = st.text_input("請輸入台股股票代號 (例如 2330, 8109)", "")
+    symbol = st.text_input("請輸入台股股票代號 (例如 2330, 8109)", "").strip()
 
     if symbol:
         if symbol in stock_list.index:
