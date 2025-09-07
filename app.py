@@ -16,11 +16,11 @@ st.title("📈 台股 AI 分析與預測")
 @st.cache_data(ttl=86400) # 快取資料一天
 def load_stock_list():
     """載入並合併上市與上櫃公司列表"""
+    df_l, df_o = None, None # Pre-define for error logging
     try:
         url_l = "https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv"
         url_o = "https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
         
-        # --- FINAL FIX: 忽略 SSL 憑證驗證來解決環境問題 ---
         response_l = requests.get(url_l, verify=False)
         response_l.raise_for_status()
         response_o = requests.get(url_o, verify=False)
@@ -28,19 +28,29 @@ def load_stock_list():
 
         df_l = pd.read_csv(io.StringIO(response_l.text))
         df_o = pd.read_csv(io.StringIO(response_o.text))
-        # --- END OF FIX ---
         
+        # --- FINAL FIX: Use column position for robustness ---
+        if len(df_l.columns) < 2 or len(df_o.columns) < 2:
+            st.error("下載的股票列表格式不符，欄位不足。")
+            return None
+
+        rename_map_l = {df_l.columns[0]: 'code', df_l.columns[1]: 'name'}
+        rename_map_o = {df_o.columns[0]: 'code', df_o.columns[1]: 'name'}
+        df_l = df_l.rename(columns=rename_map_l)
+        df_o = df_o.rename(columns=rename_map_o)
+        # --- END OF FIX ---
+
         df_l['type'] = '上市'
         df_o['type'] = '上櫃'
         
-        df_l = df_l.rename(columns={'公司代號': 'code', '公司簡稱': 'name'})
-        df_o = df_o.rename(columns={'公司代號': 'code', '公司簡稱': 'name'})
-        
         stock_list = pd.concat([df_l[['code', 'name', 'type']], df_o[['code', 'name', 'type']]])
         stock_list['code'] = stock_list['code'].astype(str)
+        stock_list = stock_list.drop_duplicates(subset='code', keep='first')
         return stock_list.set_index('code')
     except Exception as e:
-        st.error(f"無法載入股票列表，請稍後再試。錯誤訊息：{e}")
+        l_cols = list(df_l.columns) if df_l is not None else "(下載失敗)"
+        o_cols = list(df_o.columns) if df_o is not None else "(下載失敗)"
+        st.error(f"處理股票列表時發生錯誤。錯誤訊息：{e}。上市欄位：{l_cols}，上櫃欄位：{o_cols}")
         return None
 
 stock_list = load_stock_list()
@@ -155,6 +165,6 @@ if stock_list is not None:
                                 st.pyplot(fig)
 
             except Exception as e:
-                st.error(f"抓取股價資料時發生錯誤：{e}")
+                st.error(f"抓取或分析股價時發生錯誤：{e}")
         else:
             st.warning("請輸入有效的台股上市或上櫃公司代號。")
