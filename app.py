@@ -43,7 +43,6 @@ def load_stock_list():
         
         stock_list = pd.concat([df_l[['code', 'name', 'type']], df_o[['code', 'name', 'type']]])
         
-        # --- FINAL FIX: 清除股票代號前後的空格 ---
         stock_list['code'] = stock_list['code'].astype(str).str.strip()
         
         stock_list = stock_list.drop_duplicates(subset='code', keep='first')
@@ -168,4 +167,11 @@ if stock_list is not None:
             except Exception as e:
                 st.error(f"抓取或分析股價時發生錯誤：{e}")
         else:
-            st.warning("請輸入有效的台股上市或上櫃公司代號。")
+            # --- DIAGNOSTIC MODE --- 
+            st.error("找不到您輸入的股票代號，請確認代號正確。")
+            st.subheader("除錯資訊")
+            st.write(f"您輸入的代號: '{symbol}' (資料類型: {type(symbol)})")
+            st.write(f"股票列表索引的前 5 項: {stock_list.index[:5].tolist()}")
+            st.write(f"股票列表索引的資料類型: {stock_list.index.dtype}")
+            if st.button("顯示完整股票列表索引 (前1000項)"):
+                st.dataframe(stock_list.index.to_frame().head(1000))
