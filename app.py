@@ -20,12 +20,12 @@ def load_stock_list():
         url_l = "https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv"
         url_o = "https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
         
-        response_l = requests.get(url_l)
+        # --- COMBINED FIX: Both verify=False for SSL and correct encoding ---
+        response_l = requests.get(url_l, verify=False)
         response_l.raise_for_status()
-        response_o = requests.get(url_o)
+        response_o = requests.get(url_o, verify=False)
         response_o.raise_for_status()
 
-        # --- THE FINAL FIX: Use the correct encoding for TWSE's CSV file ---
         df_l = pd.read_csv(io.StringIO(response_l.text), encoding='utf-8-sig')
         df_o = pd.read_csv(io.StringIO(response_o.text), encoding='utf-8-sig')
         
@@ -86,7 +86,7 @@ if stock_list is not None:
 
                     data = data.dropna()
                     
-                    if len(X) < 50:
+                    if len(data) < 50:
                         st.error("有效資料量過少，無法建立可靠的 AI 模型。")
                     else:
                         data["Target"] = (data["Close"].shift(-1) > data["Close"]).astype(int)
@@ -145,7 +145,7 @@ if stock_list is not None:
                                 
                                 ax2_twin = ax[2].twinx()
                                 ax2_twin.plot(data.index, data["MACD"], label="MACD", color="blue", linewidth=1)
-                                ax2_twin.plot(_data.index, data["Signal"], label="Signal", color="orange", linewidth=1, linestyle='--')
+                                ax2_twin.plot(data.index, data["Signal"], label="Signal", color="orange", linewidth=1, linestyle='--')
                                 ax2_twin.bar(data.index, data["MACD_Hist"], color="grey", alpha=0.3, label="MACD Hist")
                                 ax2_twin.set_ylabel("MACD")
                                 ax2_twin.legend(loc='upper right')
