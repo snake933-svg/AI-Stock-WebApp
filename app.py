@@ -9,6 +9,18 @@ import matplotlib.pyplot as plt
 import requests
 import io
 
+# --- 中文字型設定 ---
+import matplotlib.font_manager as fm
+# 在 Render 環境中，字型會被安裝在這裡
+font_path = '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc'
+if fm.findfont('WenQuanYi Zen Hei', fontext='ttc'):
+    plt.rcParams['font.sans-serif'] = ['WenQuanYi Zen Hei']
+else:
+    # 如果找不到，提供一個備用路徑或警告
+    pass # 在本地可能找不到，但在 Render 上應該可以
+plt.rcParams['axes.unicode_minus'] = False # 解決負號顯示問題
+# --- END OF FONT SETTING ---
+
 st.set_page_config(page_title="台股 AI 分析", layout="wide")
 st.title("📈 台股 AI 分析與預測")
 
@@ -63,11 +75,9 @@ if stock_list is not None:
             try:
                 data = yf.download(symbol_full, period="2y", auto_adjust=True)
                 
-                # --- FINAL FIX for yfinance data issues ---
                 if isinstance(data.columns, pd.MultiIndex):
                     data.columns = data.columns.get_level_values(0)
                     data = data.loc[:,~data.columns.duplicated()]
-                # --- END OF FIX ---
 
                 if data.empty:
                     st.error(f"❌ 找不到 {symbol_full} 的股價資料。")
