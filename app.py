@@ -6,6 +6,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 import matplotlib.pyplot as plt
+import requests
+import io
 
 st.set_page_config(page_title="台股 AI 分析", layout="wide")
 st.title("📈 台股 AI 分析與預測")
@@ -17,17 +19,23 @@ def load_stock_list():
     try:
         url_l = "https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv"
         url_o = "https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
-        df_l = pd.read_csv(url_l)
-        df_o = pd.read_csv(url_o)
+        
+        # --- FIX: 使用 requests 模組來處理 SSL 憑證問題 ---
+        response_l = requests.get(url_l)
+        response_l.raise_for_status()
+        response_o = requests.get(url_o)
+        response_o.raise_for_status()
+
+        df_l = pd.read_csv(io.StringIO(response_l.text))
+        df_o = pd.read_csv(io.StringIO(response_o.text))
+        # --- END OF FIX ---
         
         df_l['type'] = '上市'
         df_o['type'] = '上櫃'
         
-        # 標準化欄位名稱
         df_l = df_l.rename(columns={'公司代號': 'code', '公司簡稱': 'name'})
         df_o = df_o.rename(columns={'公司代號': 'code', '公司簡稱': 'name'})
         
-        # 合併列表並移除重複
         stock_list = pd.concat([df_l[['code', 'name', 'type']], df_o[['code', 'name', 'type']]])
         stock_list['code'] = stock_list['code'].astype(str)
         return stock_list.set_index('code')
@@ -38,7 +46,6 @@ def load_stock_list():
 stock_list = load_stock_list()
 
 if stock_list is not None:
-    # --- 使用者輸入 ---
     symbol = st.text_input("請輸入台股股票代號 (例如 2330, 8109)", "")
 
     if symbol:
@@ -57,7 +64,6 @@ if stock_list is not None:
                 if data.empty:
                     st.error(f"❌ 找不到 {symbol_full} 的股價資料。")
                 else:
-                    # --- 技術指標計算 ---
                     data["Return"] = data["Close"].pct_change()
                     data["MA5"] = data["Close"].rolling(5).mean()
                     data["MA20"] = data["Close"].rolling(20).mean()
@@ -94,7 +100,7 @@ if stock_list is not None:
                             y = y[~X.isnull().any(axis=1)]
                             X = X.dropna()
 
-                        if len(X) < 50: # 確保有足夠資料來訓練
+                        if len(X) < 50:
                             st.error("有效資料量過少，無法建立可靠的 AI 模型。")
                         else:
                             X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False)
@@ -115,7 +121,6 @@ if stock_list is not None:
                             col2.metric("AI 預測明日上漲機率", f"{prob_up:.2%}", f"模型準確率: {accuracy:.2%}")
 
                             if st.checkbox("顯示詳細技術圖表"):
-                                # ... (圖表代碼與之前相同) ...
                                 st.subheader("股價圖表")
                                 fig, ax = plt.subplots(3, 1, figsize=(12, 10), sharex=True)
                                 
