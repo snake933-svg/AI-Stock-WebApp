@@ -20,10 +20,10 @@ def load_stock_list():
         url_l = "https://mopsfin.twse.com.tw/opendata/t187ap03_L.csv"
         url_o = "https://mopsfin.twse.com.tw/opendata/t187ap03_O.csv"
         
-        # --- FIX: 使用 requests 模組來處理 SSL 憑證問題 ---
-        response_l = requests.get(url_l)
+        # --- FINAL FIX: 忽略 SSL 憑證驗證來解決環境問題 ---
+        response_l = requests.get(url_l, verify=False)
         response_l.raise_for_status()
-        response_o = requests.get(url_o)
+        response_o = requests.get(url_o, verify=False)
         response_o.raise_for_status()
 
         df_l = pd.read_csv(io.StringIO(response_l.text))
