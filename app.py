@@ -24,14 +24,20 @@ if symbol:
         if data.empty:
             st.error(f"❌ 找不到股票代號 {symbol_full} 的資料，請確認代號是否正確。")
         else:
-            # --- 技術指標計算 (包含錯誤修正) ---
+            # --- BUG FIX: 處理 yfinance 可能回傳多個欄位的問題 ---
+            if isinstance(data['Close'], pd.DataFrame):
+                st.warning("偵測到多重欄位資料，自動選取第一欄進行分析。")
+                data = data.iloc[:, :5] # 取前5個標準欄位
+                data.columns = ['Open', 'High', 'Low', 'Close', 'Volume']
+            # --- END OF BUG FIX ---
+
+            # --- 技術指標計算 --- 
             data["Return"] = data["Close"].pct_change()
             data["MA5"] = data["Close"].rolling(5).mean()
             data["MA20"] = data["Close"].rolling(20).mean()
             data["UpperBB"] = data["MA20"] + 2 * data["Close"].rolling(20).std()
             data["LowerBB"] = data["MA20"] - 2 * data["Close"].rolling(20).std()
             
-            # --- 更穩健的 RSI 計算方法 ---
             delta = data['Close'].diff(1)
             gain = delta.mask(delta < 0, 0)
             loss = -delta.mask(delta > 0, 0)
@@ -40,14 +46,12 @@ if symbol:
             rs = avg_gain / avg_loss
             data['RSI'] = 100 - (100 / (1 + rs))
 
-            # --- MACD 計算 ---
             data["EMA12"] = data["Close"].ewm(span=12, adjust=False).mean()
             data["EMA26"] = data["Close"].ewm(span=26, adjust=False).mean()
             data["MACD"] = data["EMA12"] - data["EMA26"]
             data["Signal"] = data["MACD"].ewm(span=9, adjust=False).mean()
             data["MACD_Hist"] = data["MACD"] - data["Signal"]
 
-            # 移除因計算指標產生的空值 (NaN)
             data = data.dropna()
             
             if data.empty:
@@ -56,24 +60,21 @@ if symbol:
                 data["Target"] = (data["Close"].shift(-1) > data["Close"]).astype(int)
                 data = data[:-1]
 
-                # --- AI 模型 ---
                 X = data[["MA5", "MA20", "RSI", "MACD"]]
                 y = data["Target"]
 
-                # 再次確認 X 中沒有無限大的值
                 X.replace([np.inf, -np.inf], np.nan, inplace=True)
                 if X.isnull().values.any():
-                    # 如果存在空值，則移除這些行
                     y = y[~X.isnull().any(axis=1)]
                     X = X.dropna()
 
-                if X.empty:
+                if X.empty or len(X) < 2:
                     st.error("資料清理後不足，無法訓練模型。請嘗試其他股票。")
                 else:
                     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, shuffle=False, stratify=None)
                     
-                    if X_train.empty:
-                        st.error("訓練資料不足，無法訓練模型。請嘗試時間範圍更長的資料或不同的股票。")
+                    if len(X_train) < 1 or len(X_test) < 1:
+                        st.error("訓練或測試資料不足，無法訓練模型。請嘗試其他股票。")
                     else:
                         model = RandomForestClassifier(n_estimators=100, random_state=42)
                         model.fit(X_train, y_train)
@@ -81,7 +82,6 @@ if symbol:
                         accuracy = accuracy_score(y_test, model.predict(X_test))
                         prob_up = model.predict_proba(X.tail(1))[0][1]
 
-                        # --- 顯示結果 ---
                         last_close = data["Close"].iloc[-1]
                         prev_close = data["Close"].iloc[-2]
                         change_pct = (last_close - prev_close) / prev_close * 100
