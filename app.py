@@ -25,17 +25,13 @@ def load_stock_list():
         response_o = requests.get(url_o, verify=False)
         response_o.raise_for_status()
 
-        # --- THE FINAL, EVIDENCE-BASED FIX ---
-        # Ignore the header and read data by position to bypass environment encoding issues.
         df_l = pd.read_csv(io.StringIO(response_l.text), encoding='utf-8-sig', header=0)
         df_o = pd.read_csv(io.StringIO(response_o.text), encoding='utf-8-sig', header=0)
         
-        # Select columns by position (1st for code, 3rd for name) and rename
         df_l = df_l.iloc[:, [1, 3]]
         df_l.columns = ['code', 'name']
         df_o = df_o.iloc[:, [1, 3]]
         df_o.columns = ['code', 'name']
-        # --- END OF FIX ---
 
         df_l['type'] = '上市'
         df_o['type'] = '上櫃'
@@ -66,6 +62,13 @@ if stock_list is not None:
             
             try:
                 data = yf.download(symbol_full, period="2y", auto_adjust=True)
+                
+                # --- FINAL FIX for yfinance data issues ---
+                if isinstance(data.columns, pd.MultiIndex):
+                    data.columns = data.columns.get_level_values(0)
+                    data = data.loc[:,~data.columns.duplicated()]
+                # --- END OF FIX ---
+
                 if data.empty:
                     st.error(f"❌ 找不到 {symbol_full} 的股價資料。")
                 else:
