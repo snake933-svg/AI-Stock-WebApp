@@ -26,8 +26,9 @@ def load_stock_list():
         response_o = requests.get(url_o, verify=False)
         response_o.raise_for_status()
 
-        df_l = pd.read_csv(io.StringIO(response_l.text))
-        df_o = pd.read_csv(io.StringIO(response_o.text))
+        # --- FINAL FIX: Skip the first row (date/title) of the CSV file ---
+        df_l = pd.read_csv(io.StringIO(response_l.text), header=1)
+        df_o = pd.read_csv(io.StringIO(response_o.text), header=1)
         
         if len(df_l.columns) < 2 or len(df_o.columns) < 2:
             st.error("下載的股票列表格式不符，欄位不足。")
@@ -167,7 +168,6 @@ if stock_list is not None:
             except Exception as e:
                 st.error(f"抓取或分析股價時發生錯誤：{e}")
         else:
-            # --- DIAGNOSTIC MODE --- 
             st.error("找不到您輸入的股票代號，請確認代號正確。")
             st.subheader("除錯資訊")
             st.write(f"您輸入的代號: '{symbol}' (資料類型: {type(symbol)})")
